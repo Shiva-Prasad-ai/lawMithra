@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 import { ToastProvider, useToast } from '@/components/ui/Toast';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { LanguageProvider } from '@/context/LanguageContext';
 import { Navbar } from '@/components/Navbar';
 import { Hero } from '@/components/Hero';
 import { ExplainerSteps } from '@/components/ExplainerSteps';
@@ -15,7 +16,9 @@ import { DocumentWorkspace } from '@/components/documents/DocumentWorkspace';
 import { LoginPage } from '@/pages/LoginPage';
 import { SignupPage } from '@/pages/SignupPage';
 import { DashboardPage } from '@/pages/DashboardPage';
+import { ChatDashboardPage } from '@/pages/ChatDashboardPage';
 import { SettingsPage } from '@/pages/SettingsPage';
+import { LegalAssistantChat } from '@/components/chat/LegalAssistantChat';
 
 // Initialize TanStack Query Client
 const queryClient = new QueryClient({
@@ -27,10 +30,10 @@ const queryClient = new QueryClient({
   },
 });
 
-type ViewState = 'landing' | 'dashboard' | 'login' | 'signup' | 'settings';
+type ViewState = 'landing' | 'dashboard' | 'login' | 'signup' | 'settings' | 'chat';
 
 function MainLayout() {
-  const { user, isLoading } = useAuth();
+  const { user, logout, isLoading } = useAuth();
   const { addToast } = useToast();
 
   // Theme state: dark or light mode
@@ -66,10 +69,10 @@ function MainLayout() {
   // Protected route enforcement
   const handleNavigate = (view: ViewState) => {
     setSelectedDocumentId(null);
-    if ((view === 'dashboard' || view === 'settings') && !user) {
+    if ((view === 'dashboard' || view === 'settings' || view === 'chat') && !user) {
       addToast({
         title: 'Sign In Required',
-        description: 'Please log in to access your dashboard and settings.',
+        description: 'Please log in to access Law Mithra dashboard and legal assistant.',
         variant: 'info',
       });
       setCurrentView('login');
@@ -103,6 +106,84 @@ function MainLayout() {
     }
     setIsVaultModalOpen(true);
   };
+
+  // When on pure landing page, render only the full-screen 100vw x 100vh hero
+  if (currentView === 'landing' && !selectedDocumentId) {
+    return (
+      <Hero
+        onLoginClick={() => setCurrentView(user ? 'dashboard' : 'login')}
+        isLoggedIn={!!user}
+      />
+    );
+  }
+
+  // When on pure login page, render the full-screen 100vw x 100vh premium dark login
+  if (currentView === 'login' && !selectedDocumentId) {
+    return (
+      <LoginPage
+        onNavigateSignup={() => setCurrentView('signup')}
+        onLoginSuccess={() => setCurrentView('dashboard')}
+        onNavigateHome={() => setCurrentView('landing')}
+      />
+    );
+  }
+
+  // When on pure signup page, render the full-screen 100vw x 100vh premium dark signup
+  if (currentView === 'signup' && !selectedDocumentId) {
+    return (
+      <SignupPage
+        onNavigateLogin={() => setCurrentView('login')}
+        onSignupSuccess={() => setCurrentView('dashboard')}
+        onNavigateHome={() => setCurrentView('landing')}
+      />
+    );
+  }
+
+  // Protected: When on dashboard or chat, user MUST be logged in. If signed out, redirect to landing!
+  if ((currentView === 'dashboard' || currentView === 'chat') && !selectedDocumentId) {
+    if (!user) {
+      return (
+        <Hero
+          onLoginClick={() => setCurrentView('login')}
+          isLoggedIn={false}
+        />
+      );
+    }
+
+    const handleDashboardLogout = async () => {
+      try {
+        await logout();
+      } catch (err) {
+        console.error('Logout error:', err);
+      }
+      setCurrentView('landing');
+    };
+
+    return (
+      <>
+        <ChatDashboardPage
+          onOpenUpload={handleOpenUpload}
+          onOpenVault={handleOpenVault}
+          onOpenSettings={() => setCurrentView('settings')}
+          onLogout={handleDashboardLogout}
+        />
+        {/* Modals for Document Upload & Vault */}
+        <DocumentUploadModal
+          isOpen={isUploadModalOpen}
+          onClose={() => setIsUploadModalOpen(false)}
+          onUploadSuccess={(doc) => {
+            setSelectedDocumentId(doc.id);
+          }}
+        />
+        <DocumentVaultModal
+          isOpen={isVaultModalOpen}
+          onClose={() => setIsVaultModalOpen(false)}
+          onSelectDocument={(id) => setSelectedDocumentId(id)}
+          onOpenUpload={handleOpenUpload}
+        />
+      </>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-ivory dark:bg-charcoal text-slate-800 dark:text-slate-100 selection:bg-gold-200 selection:text-navy-900 transition-colors duration-200">
@@ -138,6 +219,10 @@ function MainLayout() {
             onNavigateLogin={() => setCurrentView('login')}
             onSignupSuccess={() => setCurrentView('dashboard')}
           />
+        ) : currentView === 'chat' ? (
+          <div className="max-w-5xl mx-auto px-4 py-8">
+            <LegalAssistantChat standalone={true} />
+          </div>
         ) : currentView === 'dashboard' && user ? (
           <DashboardPage
             onOpenUpload={handleOpenUpload}
@@ -146,15 +231,10 @@ function MainLayout() {
         ) : currentView === 'settings' && user ? (
           <SettingsPage />
         ) : (
-          <>
-            <Hero
-              onOpenUpload={handleOpenUpload}
-              onOpenVault={handleOpenVault}
-            />
-            <ExplainerSteps />
-            <DesignSystemShowcase />
-            <SafetyContractSection />
-          </>
+          <Hero
+            onLoginClick={() => setCurrentView(user ? 'dashboard' : 'login')}
+            isLoggedIn={!!user}
+          />
         )}
       </main>
 
@@ -185,7 +265,9 @@ export function App() {
       <BrowserRouter>
         <ToastProvider>
           <AuthProvider>
-            <MainLayout />
+            <LanguageProvider>
+              <MainLayout />
+            </LanguageProvider>
           </AuthProvider>
         </ToastProvider>
       </BrowserRouter>

@@ -60,13 +60,15 @@ class RegisterView(APIView):
     )
     def post(self, request):
         serializer = UserRegistrationSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = serializer.save()
+        if not serializer.is_valid():
+            logger.warning("event=auth.register.failed reason=validation_error")
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+        user = serializer.save()
         logger.info(f"event=auth.register.success user_id={user.id}")
 
         refresh = RefreshToken.for_user(user)
-        profile = UserProfile.objects.get(user=user)
+        profile, _ = UserProfile.objects.get_or_create(user=user)
         profile_serializer = UserProfileSerializer(profile)
 
         response_data = {
@@ -104,7 +106,8 @@ class LoginView(APIView):
         logger.info(f"event=auth.login.success user_id={user.id}")
 
         refresh = RefreshToken.for_user(user)
-        profile_serializer = UserProfileSerializer(user.profile)
+        profile, _ = UserProfile.objects.get_or_create(user=user)
+        profile_serializer = UserProfileSerializer(profile)
 
         response_data = {
             'access': str(refresh.access_token),

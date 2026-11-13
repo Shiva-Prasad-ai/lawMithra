@@ -7,16 +7,21 @@ from .models import UserProfile
 class UserProfileSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source='user.email', read_only=True)
     id = serializers.IntegerField(source='user.id', read_only=True)
+    full_name = serializers.CharField(source='user.first_name', read_only=True)
+    is_staff = serializers.BooleanField(source='user.is_staff', read_only=True)
+    is_superuser = serializers.BooleanField(source='user.is_superuser', read_only=True)
 
     class Meta:
         model = UserProfile
-        fields = ('id', 'email', 'preferred_language', 'text_size', 'created_at', 'updated_at')
-        read_only_fields = ('id', 'email', 'created_at', 'updated_at')
+        fields = ('id', 'email', 'full_name', 'is_staff', 'is_superuser', 'preferred_language', 'text_size', 'created_at', 'updated_at')
+        read_only_fields = ('id', 'email', 'full_name', 'is_staff', 'is_superuser', 'created_at', 'updated_at')
 
 
 class UserRegistrationSerializer(serializers.Serializer):
+    full_name = serializers.CharField(required=False, allow_blank=True, default='', max_length=150)
     email = serializers.EmailField(required=True)
     password = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})
+    confirm_password = serializers.CharField(write_only=True, required=False, allow_blank=True, style={'input_type': 'password'})
     preferred_language = serializers.ChoiceField(
         choices=UserProfile.Language.choices,
         default=UserProfile.Language.ENGLISH,
@@ -28,6 +33,12 @@ class UserRegistrationSerializer(serializers.Serializer):
         required=False
     )
 
+    def validate_full_name(self, value):
+        name = value.strip()
+        if value and len(name) < 2:
+            raise serializers.ValidationError("Full name must be at least 2 characters long.")
+        return name
+
     def validate_email(self, value):
         normalized_email = value.strip().lower()
         if User.objects.filter(email__iexact=normalized_email).exists():
@@ -38,16 +49,33 @@ class UserRegistrationSerializer(serializers.Serializer):
         validate_password(value)
         return value
 
+    def validate(self, attrs):
+        password = attrs.get('password')
+        confirm_password = attrs.get('confirm_password')
+
+        if confirm_password and password != confirm_password:
+            raise serializers.ValidationError({"confirm_password": ["Passwords do not match."]})
+
+        return attrs
+
     def create(self, validated_data):
         email = validated_data['email']
         password = validated_data['password']
+        full_name = validated_data.get('full_name', '').strip()
         preferred_language = validated_data.get('preferred_language', UserProfile.Language.ENGLISH)
         text_size = validated_data.get('text_size', UserProfile.TextSize.NORMAL)
+
+        # Split full_name into first_name and last_name if space exists
+        parts = full_name.split(' ', 1)
+        first_name = full_name  # Keep complete full name in first_name for single-field display
+        last_name = parts[1] if len(parts) > 1 else ''
 
         # Use email address as the username (case-insensitive, stored lowercase)
         user = User(
             username=email,
             email=email,
+            first_name=first_name,
+            last_name=last_name,
             is_active=True
         )
         user.set_password(password)

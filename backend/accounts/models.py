@@ -18,6 +18,8 @@ class UserProfile(models.Model):
         MALAYALAM = 'ml', 'Malayalam'
         MARATHI = 'mr', 'Marathi'
         BENGALI = 'bn', 'Bengali'
+        GUJARATI = 'gu', 'Gujarati'
+        PUNJABI = 'pa', 'Punjabi'
 
     class TextSize(models.TextChoices):
         NORMAL = 'normal', 'Normal'
@@ -33,7 +35,7 @@ class UserProfile(models.Model):
         max_length=5,
         choices=Language.choices,
         default=Language.ENGLISH,
-        help_text="Preferred language code (en, kn, hi, te, ta, ml, mr, bn)"
+        help_text="Preferred language code (en, kn, hi, te, ta, ml, mr, bn, gu, pa)"
     )
     text_size = models.CharField(
         max_length=10,

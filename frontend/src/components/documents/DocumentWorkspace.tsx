@@ -22,7 +22,8 @@ import {
   Info,
   ShieldAlert,
   ChevronRight,
-  ExternalLink
+  ExternalLink,
+  FileText,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -38,10 +39,16 @@ import {
   updateDocumentSection,
   addManualSection,
   deleteManualSection,
+  generateComplaintReport,
+  fetchLatestReport,
+  fetchReportList,
   DocumentDetail,
   DetectedSection,
-  GroupedSectionsResponse
+  GroupedSectionsResponse,
+  ComplaintReport,
+  ReportListResponse,
 } from '@/lib/api';
+import { ComplaintReportView } from '@/components/documents/ComplaintReportView';
 
 interface DocumentWorkspaceProps {
   documentId: string;
@@ -52,6 +59,9 @@ interface DocumentWorkspaceProps {
 export function DocumentWorkspace({ documentId, onBack, onDocumentDeleted }: DocumentWorkspaceProps) {
   const { addToast } = useToast();
   const queryClient = useQueryClient();
+
+  // ── Workspace tab: 'viewer' | 'report' ────────────────────────────────────
+  const [activeTab, setActiveTab] = useState<'viewer' | 'report'>('viewer');
 
   const [activePageIndex, setActivePageIndex] = useState<number>(0);
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -80,6 +90,11 @@ export function DocumentWorkspace({ documentId, onBack, onDocumentDeleted }: Doc
     section_number: '',
   });
 
+  // ── Report state ──────────────────────────────────────────────────────────
+  const [currentReport, setCurrentReport] = useState<ComplaintReport | null>(null);
+  const [reportError, setReportError] = useState<string | null>(null);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+
   const viewerContainerRef = useRef<HTMLDivElement>(null);
 
   // Fetch document details (poll every 3s if processing)
@@ -102,6 +117,63 @@ export function DocumentWorkspace({ documentId, onBack, onDocumentDeleted }: Doc
     queryFn: () => fetchDocumentSections(documentId),
     enabled: !!document && document.status === 'completed',
   });
+
+  // ── Fetch latest existing report on mount ────────────────────────────────
+  const {
+    data: existingReport,
+    isLoading: isLoadingExistingReport,
+  } = useQuery<ComplaintReport>({
+    queryKey: ['latest-report', documentId],
+    queryFn: () => fetchLatestReport(documentId),
+    enabled: !!document && document.status === 'completed',
+    retry: false,
+    // 404 means no report yet — not an error we care about
+  });
+
+  // Set currentReport from existing when it loads
+  React.useEffect(() => {
+    if (existingReport && !currentReport) {
+      setCurrentReport(existingReport);
+    }
+  }, [existingReport]);
+
+  // ── Fetch report history list ─────────────────────────────────────────────
+  const {
+    data: reportList,
+    refetch: refetchReportList,
+  } = useQuery<ReportListResponse>({
+    queryKey: ['report-list', documentId],
+    queryFn: () => fetchReportList(documentId),
+    enabled: !!document && document.status === 'completed',
+    retry: false,
+  });
+
+  // ── Generate / Regenerate report ─────────────────────────────────────────
+  const handleGenerateReport = React.useCallback(async () => {
+    setActiveTab('report');
+    setIsGeneratingReport(true);
+    setReportError(null);
+    try {
+      const report = await generateComplaintReport(documentId);
+      setCurrentReport(report);
+      queryClient.invalidateQueries({ queryKey: ['report-list', documentId] });
+      queryClient.invalidateQueries({ queryKey: ['latest-report', documentId] });
+      addToast({
+        title: 'Report Generated',
+        description: `Universal Complaint Analysis Report v${report.version} is ready.`,
+        variant: 'success',
+      });
+    } catch (err: any) {
+      setReportError(err.message || 'Report generation failed.');
+      addToast({
+        title: 'Report Generation Failed',
+        description: err.message || 'Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsGeneratingReport(false);
+    }
+  }, [documentId, queryClient, addToast]);
 
   // Document hard delete mutation
   const deleteMutation = useMutation({
@@ -412,7 +484,69 @@ export function DocumentWorkspace({ documentId, onBack, onDocumentDeleted }: Doc
       </div>
 
       {/* Main 3-Column Workspace Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6">
+      {/* ── Tab switcher ── */}
+      <div className="flex items-center gap-1 mt-6 mb-4 border-b border-gold-500/20">
+        <button
+          onClick={() => setActiveTab('viewer')}
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-all focus:outline-none ${
+            activeTab === 'viewer'
+              ? 'bg-gold-500/10 text-gold-600 dark:text-gold-400 border-b-2 border-gold-500'
+              : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+          }`}
+        >
+          <BookOpen className="w-4 h-4" />
+          Document Viewer
+        </button>
+        <button
+          onClick={() => { setActiveTab('report'); if (!currentReport && !isGeneratingReport) handleGenerateReport(); }}
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-all focus:outline-none ${
+            activeTab === 'report'
+              ? 'bg-gold-500/10 text-gold-600 dark:text-gold-400 border-b-2 border-gold-500'
+              : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+          }`}
+        >
+          <FileText className="w-4 h-4" />
+          AI Report
+          {currentReport && (
+            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-gold-500/20 text-gold-700 dark:text-gold-300">
+              v{currentReport.version}
+            </span>
+          )}
+          {!currentReport && !isGeneratingReport && document?.status === 'completed' && (
+            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-200 dark:bg-charcoal text-slate-500">
+              Generate
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* ── Report tab panel ── */}
+      {activeTab === 'report' && (
+        <div
+          className="rounded-xl overflow-hidden shadow-soft"
+          style={{
+            height: 'calc(100vh - 260px)',
+            minHeight: '500px',
+            border: '1px solid rgba(217,164,65,0.2)',
+            background: '#050505',
+          }}
+        >
+          <ComplaintReportView
+            report={currentReport}
+            reportList={reportList || null}
+            documentId={documentId}
+            isLoading={isGeneratingReport}
+            isLoadingList={false}
+            error={reportError}
+            onGenerate={handleGenerateReport}
+            onSelectVersion={(r) => setCurrentReport(r)}
+          />
+        </div>
+      )}
+
+      {/* ── Viewer tab panel ── */}
+      {activeTab === 'viewer' && (
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Column 1: Pages List (3 cols) */}
         <div className="lg:col-span-3 space-y-4">
           <Card className="p-4 shadow-soft">
@@ -849,6 +983,7 @@ export function DocumentWorkspace({ documentId, onBack, onDocumentDeleted }: Doc
           </Card>
         </div>
       </div>
+      )} {/* end viewer tab */}
 
       {/* Manual Section Add Modal */}
       {isManualModalOpen && (
@@ -1105,7 +1240,7 @@ export function DocumentWorkspace({ documentId, onBack, onDocumentDeleted }: Doc
   );
 }
 
-// Subcomponent: Section Status Badge with appropriate theme colors
+// Subcomponent: Section Status Badge
 function SectionStatusBadge({
   reviewStatus,
   detectionMethod,

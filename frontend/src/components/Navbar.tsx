@@ -11,21 +11,24 @@ import {
   LayoutDashboard,
   Settings,
   LogOut,
-  User
+  User,
+  Sparkles
 } from 'lucide-react';
 import { LanguageSelector } from './LanguageSelector';
 import { ApiStatusBadge } from './ApiStatusBadge';
 import { Button } from './ui/Button';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/ui/Toast';
+import { useLanguage } from '@/context/LanguageContext';
 
 interface NavbarProps {
   darkMode: boolean;
   setDarkMode: (val: boolean) => void;
   currentView: string;
-  onNavigate: (view: 'landing' | 'dashboard' | 'login' | 'signup' | 'settings') => void;
+  onNavigate: (view: 'landing' | 'dashboard' | 'login' | 'signup' | 'settings' | 'chat') => void;
   onOpenUpload: () => void;
   onOpenVault: () => void;
+  onOpenChat?: () => void;
 }
 
 export function Navbar({
@@ -35,9 +38,11 @@ export function Navbar({
   onNavigate,
   onOpenUpload,
   onOpenVault,
+  onOpenChat,
 }: NavbarProps) {
   const { user, logout } = useAuth();
   const { addToast } = useToast();
+  const { t } = useLanguage();
   const [showUserDropdown, setShowUserDropdown] = useState(false);
 
   const handleProtectedAction = (action: () => void) => {
@@ -81,6 +86,16 @@ export function Navbar({
 
         {/* Center Links */}
         <div className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600 dark:text-slate-300">
+          <button
+            onClick={() => onNavigate('chat')}
+            className={`flex items-center gap-1.5 transition-colors ${
+              currentView === 'chat' ? 'text-gold-600 dark:text-gold-400 font-bold' : 'hover:text-navy-900 dark:hover:text-gold-400'
+            }`}
+          >
+            <Sparkles className="w-4 h-4 text-gold-500" />
+            <span>{t('nav.chat', 'Legal AI Assistant')}</span>
+          </button>
+
           {user ? (
             <>
               <button
@@ -90,7 +105,7 @@ export function Navbar({
                 }`}
               >
                 <LayoutDashboard className="w-4 h-4 text-gold-500" />
-                <span>Dashboard</span>
+                <span>{t('nav.dashboard', 'Dashboard')}</span>
               </button>
 
               <button
@@ -100,7 +115,7 @@ export function Navbar({
                 }`}
               >
                 <Settings className="w-4 h-4 text-gold-500" />
-                <span>Settings</span>
+                <span>{t('nav.settings', 'Settings')}</span>
               </button>
             </>
           ) : (
@@ -110,7 +125,7 @@ export function Navbar({
                 className="flex items-center gap-1.5 hover:text-navy-900 dark:hover:text-gold-400 transition-colors"
               >
                 <FolderLock className="w-4 h-4 text-gold-500" />
-                <span>Document Vault</span>
+                <span>{t('nav.vault', 'Document Vault')}</span>
               </button>
               <a
                 href="#explainer"
@@ -139,20 +154,20 @@ export function Navbar({
               size="sm"
               variant="gold"
               onClick={onOpenUpload}
-              className="gap-1.5 hidden sm:flex text-xs py-1.5 px-3 h-8 shadow-xs"
+              className="gap-1.5 hidden sm:flex text-xs py-1.5 px-3 h-8 shadow-xs cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Upload</span>
+              <span>{t('nav.upload', 'Upload')}</span>
             </Button>
           ) : (
             <Button
               size="sm"
               variant="gold"
               onClick={() => handleProtectedAction(onOpenUpload)}
-              className="gap-1.5 hidden sm:flex text-xs py-1.5 px-3 h-8 shadow-xs"
+              className="gap-1.5 hidden sm:flex text-xs py-1.5 px-3 h-8 shadow-xs cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Upload</span>
+              <span>{t('nav.upload', 'Upload')}</span>
             </Button>
           )}
 
@@ -165,7 +180,7 @@ export function Navbar({
             <div className="relative">
               <button
                 onClick={() => setShowUserDropdown(!showUserDropdown)}
-                className="flex items-center gap-2 p-1.5 rounded-xl border border-slate-300 dark:border-charcoal-100 hover:border-gold-500/50 bg-white/50 dark:bg-charcoal/50 text-xs font-medium text-slate-800 dark:text-slate-100 transition-colors"
+                className="flex items-center gap-2 p-1.5 rounded-xl border border-slate-300 dark:border-charcoal-100 hover:border-gold-500/50 bg-white/50 dark:bg-charcoal/50 text-xs font-medium text-slate-800 dark:text-slate-100 transition-colors cursor-pointer"
                 aria-label="User menu"
               >
                 <div className="w-6 h-6 rounded-lg bg-gold-500/10 text-gold-600 dark:text-gold-400 flex items-center justify-center font-bold">
@@ -188,28 +203,36 @@ export function Navbar({
 
                   <button
                     onClick={() => onNavigate('dashboard')}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-700 dark:text-slate-300 hover:bg-gold-500/10 transition-colors text-left"
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-700 dark:text-slate-300 hover:bg-gold-500/10 transition-colors text-left cursor-pointer"
                   >
                     <LayoutDashboard className="w-3.5 h-3.5 text-gold-500" />
-                    <span>Dashboard</span>
+                    <span>{t('nav.dashboard', 'Dashboard')}</span>
+                  </button>
+
+                  <button
+                    onClick={() => onNavigate('chat')}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-700 dark:text-slate-300 hover:bg-gold-500/10 transition-colors text-left cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-gold-500" />
+                    <span>{t('nav.chat', 'Legal AI Assistant')}</span>
                   </button>
 
                   <button
                     onClick={() => onNavigate('settings')}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-700 dark:text-slate-300 hover:bg-gold-500/10 transition-colors text-left"
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-700 dark:text-slate-300 hover:bg-gold-500/10 transition-colors text-left cursor-pointer"
                   >
                     <Settings className="w-3.5 h-3.5 text-gold-500" />
-                    <span>Settings</span>
+                    <span>{t('nav.settings', 'Settings')}</span>
                   </button>
 
                   <div className="border-t border-gold-500/10 my-1" />
 
                   <button
                     onClick={() => logout()}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors text-left"
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors text-left cursor-pointer"
                   >
                     <LogOut className="w-3.5 h-3.5" />
-                    <span>Log Out</span>
+                    <span>{t('nav.signOut', 'Sign Out')}</span>
                   </button>
                 </div>
               )}
@@ -220,19 +243,19 @@ export function Navbar({
                 variant="outline"
                 size="sm"
                 onClick={() => onNavigate('login')}
-                className="gap-1 text-xs py-1.5 px-3 h-8"
+                className="gap-1 text-xs py-1.5 px-3 h-8 cursor-pointer"
               >
                 <LogIn className="w-3.5 h-3.5" />
-                <span>Sign In</span>
+                <span>{t('nav.login', 'Sign In')}</span>
               </Button>
               <Button
                 variant="primary"
                 size="sm"
                 onClick={() => onNavigate('signup')}
-                className="gap-1 text-xs py-1.5 px-3 h-8 hidden sm:flex"
+                className="gap-1 text-xs py-1.5 px-3 h-8 hidden sm:flex cursor-pointer"
               >
                 <UserPlus className="w-3.5 h-3.5 text-accent" />
-                <span>Sign Up</span>
+                <span>{t('nav.signup', 'Sign Up')}</span>
               </Button>
             </div>
           )}
@@ -240,7 +263,7 @@ export function Navbar({
           {/* Dark Mode Toggle */}
           <button
             onClick={() => setDarkMode(!darkMode)}
-            className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-navy-900/5 dark:hover:bg-charcoal-300 transition-colors border border-navy-900/10 dark:border-charcoal-100"
+            className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-navy-900/5 dark:hover:bg-charcoal-300 transition-colors border border-navy-900/10 dark:border-charcoal-100 cursor-pointer"
             aria-label="Toggle dark mode"
           >
             {darkMode ? <Sun className="w-4 h-4 text-gold-400" /> : <Moon className="w-4 h-4 text-navy-800" />}

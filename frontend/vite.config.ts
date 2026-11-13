@@ -15,12 +15,12 @@ export default defineConfig({
     host: true, // Listen on all network interfaces for Docker & local testing
     proxy: {
       '/api': {
-        target: process.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000',
+        target: 'http://127.0.0.1:8000',
         changeOrigin: true,
         secure: false,
       },
       '/media': {
-        target: process.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000',
+        target: 'http://127.0.0.1:8000',
         changeOrigin: true,
         secure: false,
       },

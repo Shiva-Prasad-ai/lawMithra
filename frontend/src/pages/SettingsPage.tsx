@@ -15,6 +15,8 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/ui/Toast';
 import { changeUserPassword, deleteUserAccount } from '@/lib/api';
+import { useLanguage } from '@/context/LanguageContext';
+import { SupportedLanguage } from '@/lib/translations';
 
 const LANGUAGES = [
   { code: 'en', label: 'English' },
@@ -30,9 +32,10 @@ const LANGUAGES = [
 export function SettingsPage() {
   const { user, updateProfile, textSize, setTextSize, logout } = useAuth();
   const { addToast } = useToast();
+  const { language, setLanguage } = useLanguage();
 
   // Language state
-  const [selectedLang, setSelectedLang] = useState(user?.preferred_language || 'en');
+  const [selectedLang, setSelectedLang] = useState(language || user?.preferred_language || 'en');
   const [isUpdatingLang, setIsUpdatingLang] = useState(false);
 
   // Password state
@@ -49,8 +52,9 @@ export function SettingsPage() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const handleLanguageChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const lang = e.target.value as any;
+    const lang = e.target.value as SupportedLanguage;
     setSelectedLang(lang);
+    setLanguage(lang);
     setIsUpdatingLang(true);
     try {
       await updateProfile({ preferred_language: lang });

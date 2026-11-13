@@ -187,8 +187,8 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'anon': '100/minute',
         'user': '1000/minute',
-        'auth_login': '5/minute',
-        'auth_register': '5/minute',
+        'auth_login': '5/minute' if ('pytest' in sys.modules or any('pytest' in a for a in sys.argv)) else ('100/minute' if DEBUG else '5/minute'),
+        'auth_register': '5/minute' if ('pytest' in sys.modules or any('pytest' in a for a in sys.argv)) else ('100/minute' if DEBUG else '5/minute'),
         'doc_upload': '20/minute',
     },
 }

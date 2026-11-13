@@ -92,6 +92,8 @@ export default {
         },
       },
       fontFamily: {
+        serif: ['"Playfair Display"', 'Georgia', 'serif'],
+        playfair: ['"Playfair Display"', 'serif'],
         sans: [
           'Inter',
           'Noto Sans',

@@ -1,3 +1,5 @@
+import { SupportedLanguage } from './translations';
+
 export interface DocumentPage {
   id: string;
   page_number: number;
@@ -42,7 +44,10 @@ export interface DocumentListItem {
 export interface UserProfile {
   id: number;
   email: string;
-  preferred_language: 'en' | 'kn' | 'hi' | 'te' | 'ta' | 'ml' | 'mr' | 'bn';
+  full_name?: string;
+  is_staff?: boolean;
+  is_superuser?: boolean;
+  preferred_language: SupportedLanguage;
   text_size: 'normal' | 'large' | 'xlarge';
   created_at: string;
   updated_at?: string;
@@ -114,8 +119,10 @@ export async function apiFetch(url: string, options: RequestInit = {}): Promise<
 /* ================= Authentication API ================= */
 
 export async function registerUser(data: {
+  full_name?: string;
   email: string;
   password: string;
+  confirm_password?: string;
   preferred_language?: string;
   text_size?: string;
 }): Promise<AuthResponse> {
@@ -129,8 +136,11 @@ export async function registerUser(data: {
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
     const message =
+      errorData.full_name?.[0] ||
       errorData.email?.[0] ||
       errorData.password?.[0] ||
+      errorData.confirm_password?.[0] ||
+      errorData.non_field_errors?.[0] ||
       errorData.detail ||
       `Registration failed (HTTP ${res.status})`;
     throw new Error(message);
@@ -434,4 +444,145 @@ export async function deleteManualSection(docId: string, sectionId: string): Pro
     const errorData = await res.json().catch(() => ({}));
     throw new Error(errorData.detail || `Failed to delete manual section`);
   }
+}
+
+export interface LegalAssistantResponse {
+  detected_language: string;
+  target_language: string;
+  legal_issue: string;
+  remedies: string[];
+  applicable_sections: {
+    act: string;
+    sections: string[];
+    summary: string;
+    original_english_statute: string;
+  }[];
+  explanation?: string;
+  advice?: string;
+  statutory_references?: string[];
+  disclaimer?: string;
+}
+
+// ─── Universal Complaint Analysis Report ───────────────────────────────────
+
+export interface LegalProvision {
+  act_section: string;
+  relevance: string;
+  caveat: string;
+}
+
+export interface ComplaintReport {
+  id: string;
+  report_id: string;
+  generated_date: string;
+  updated_at: string;
+  document_title: string;
+  case_complaint_no: string;
+  status: string;
+  case_status: string;
+  complaint_type: string;
+  parties_involved: string;
+  incident_date_place: string;
+  complaint_summary: string;
+  legal_provisions: LegalProvision[];
+  evidence_available: string[];
+  evidence_missing: string[];
+  complainant_side: string;
+  respondent_side: string;
+  persons_role: string;
+  rights_next_steps: string;
+  advocate_questions: string;
+  current_stage: string;
+  last_updated_date: string;
+  version: number;
+  error_message?: string;
+}
+
+export interface ReportListResponse {
+  count: number;
+  reports: ComplaintReport[];
+}
+
+/** POST – generate (or regenerate) a report; creates new versioned record */
+export async function generateComplaintReport(
+  documentId: string,
+  language: string = 'en'
+): Promise<ComplaintReport> {
+  const res = await apiFetch(`/api/documents/${documentId}/generate-report/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ language }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `Report generation failed (${res.status})`);
+  }
+  return res.json();
+}
+
+/** GET – fetch the latest completed report for a document */
+export async function fetchLatestReport(documentId: string): Promise<ComplaintReport> {
+  const res = await apiFetch(`/api/documents/${documentId}/reports/latest/`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `No report found (${res.status})`);
+  }
+  return res.json();
+}
+
+/** GET – list all report versions */
+export async function fetchReportList(documentId: string): Promise<ReportListResponse> {
+  const res = await apiFetch(`/api/documents/${documentId}/reports/`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `Failed to fetch reports (${res.status})`);
+  }
+  return res.json();
+}
+
+/** Trigger authenticated PDF download via blob */
+export async function downloadReportPDF(documentId: string, reportDbId: string): Promise<void> {
+  const res = await apiFetch(`/api/documents/${documentId}/reports/${reportDbId}/pdf/`);
+  if (!res.ok) return;
+  const blob = await res.blob();
+  const blobUrl = URL.createObjectURL(blob);
+  const a = window.document.createElement('a');
+  const disp = res.headers.get('Content-Disposition') || '';
+  const match = disp.match(/filename="([^"]+)"/);
+  a.download = match ? match[1] : 'LawMithra_Report.pdf';
+  a.href = blobUrl;
+  a.click();
+  URL.revokeObjectURL(blobUrl);
+}
+
+export async function askLegalAssistant(
+  query: string,
+  preferredLanguage: string = 'en',
+  autoDetect: boolean = true
+): Promise<LegalAssistantResponse> {
+  const res = await apiFetch('/api/knowledge/chat/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      query,
+      preferred_language: preferredLanguage,
+      auto_detect_language: autoDetect,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `Legal AI service error (${res.status})`);
+  }
+
+  const data = await res.json();
+  const statutes = (data.applicable_sections || []).flatMap((s: any) =>
+    (s.sections || []).map((sec: string) => `${sec} (${s.act})`)
+  );
+
+  return {
+    ...data,
+    explanation: data.legal_issue,
+    statutory_references: statutes,
+  };
 }

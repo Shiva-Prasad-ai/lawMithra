@@ -16,7 +16,14 @@ interface AuthContextType {
   user: UserProfile | null;
   isLoading: boolean;
   login: (data: { email: string; password: string }) => Promise<void>;
-  register: (data: { email: string; password: string; preferred_language?: string; text_size?: string }) => Promise<void>;
+  register: (data: {
+    full_name?: string;
+    email: string;
+    password: string;
+    confirm_password?: string;
+    preferred_language?: string;
+    text_size?: string;
+  }) => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (data: Partial<Pick<UserProfile, 'preferred_language' | 'text_size'>>) => Promise<void>;
   textSize: 'normal' | 'large' | 'xlarge';
@@ -104,7 +111,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const register = async (data: { email: string; password: string; preferred_language?: string; text_size?: string }) => {
+  const register = async (data: {
+    full_name?: string;
+    email: string;
+    password: string;
+    confirm_password?: string;
+    preferred_language?: string;
+    text_size?: string;
+  }) => {
     const res = await registerUser(data);
     setUser(res.user);
     if (res.user.text_size) {
