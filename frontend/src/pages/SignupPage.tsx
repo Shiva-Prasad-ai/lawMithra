@@ -486,7 +486,7 @@ export function SignupPage({ onNavigateLogin, onSignupSuccess, onNavigateHome }:
                     autoFocus
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    placeholder={t('signup.fullNamePlaceholder', 'Full Name (e.g. Shiva Prasad)')}
+                    placeholder={t('signup.fullNamePlaceholder', 'Full Name (e.g. Rajesh Kumar)')}
                     className="w-full bg-transparent text-white placeholder-[#7A7A7A] text-xs sm:text-sm font-sans outline-none"
                   />
                 </div>
