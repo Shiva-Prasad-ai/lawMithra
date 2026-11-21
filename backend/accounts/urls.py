@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import re_path
 from .views import (
     RegisterView,
     LoginView,
@@ -10,12 +10,12 @@ from .views import (
 )
 
 urlpatterns = [
-    path('register/', RegisterView.as_view(), name='auth-register'),
-    path('login/', LoginView.as_view(), name='auth-login'),
-    path('refresh/', RefreshTokenView.as_view(), name='auth-refresh'),
-    path('logout/', LogoutView.as_view(), name='auth-logout'),
-    path('me/', UserProfileView.as_view(), name='auth-me'),
-    path('profile/', UserProfileView.as_view(), name='auth-profile'),
-    path('change-password/', ChangePasswordView.as_view(), name='auth-change-password'),
-    path('delete-account/', DeleteAccountView.as_view(), name='auth-delete-account'),
+    re_path(r'^register/?$', RegisterView.as_view(), name='auth-register'),
+    re_path(r'^login/?$', LoginView.as_view(), name='auth-login'),
+    re_path(r'^refresh/?$', RefreshTokenView.as_view(), name='auth-refresh'),
+    re_path(r'^logout/?$', LogoutView.as_view(), name='auth-logout'),
+    re_path(r'^me/?$', UserProfileView.as_view(), name='auth-me'),
+    re_path(r'^profile/?$', UserProfileView.as_view(), name='auth-profile'),
+    re_path(r'^change-password/?$', ChangePasswordView.as_view(), name='auth-change-password'),
+    re_path(r'^delete-account/?$', DeleteAccountView.as_view(), name='auth-delete-account'),
 ]

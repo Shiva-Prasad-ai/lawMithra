@@ -10,7 +10,7 @@ Endpoints:
 """
 
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, re_path, include
 from drf_spectacular.views import (
     SpectacularAPIView,
     SpectacularSwaggerView,
@@ -22,27 +22,27 @@ from config.views import HealthCheckView
 
 urlpatterns = [
     # Administration
-    path('admin/', admin.site.urls),
+    re_path(r'^admin/?', admin.site.urls),
 
-    # Health Check Endpoint
-    path('api/health/', HealthCheckView.as_view(), name='api-health'),
+    # Health Check Endpoint (supports both with and without trailing slash)
+    re_path(r'^api/health/?$', HealthCheckView.as_view(), name='api-health'),
 
     # Authentication & Profile
-    path('api/auth/', include('accounts.urls')),
+    re_path(r'^api/auth/', include('accounts.urls')),
 
     # Phase 1: Documents Vault & Extraction
-    path('api/documents/', include('documents.urls')),
+    re_path(r'^api/documents/', include('documents.urls')),
 
     # Phase 2: Section Detection (nested under documents for ownership-filtered endpoints)
-    path('api/documents/<uuid:doc_id>/', include('analysis.urls')),
+    re_path(r'^api/documents/(?P<doc_id>[0-9a-f-]+)/', include('analysis.urls')),
 
     # Multilingual Legal AI & Knowledge Services
-    path('api/knowledge/', include('knowledge.urls')),
+    re_path(r'^api/knowledge/', include('knowledge.urls')),
 
     # OpenAPI 3 Schema & Swagger UI
-    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
-    path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
-    path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
+    re_path(r'^api/schema/?$', SpectacularAPIView.as_view(), name='schema'),
+    re_path(r'^api/docs/?$', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+    re_path(r'^api/redoc/?$', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
 ]
 
 

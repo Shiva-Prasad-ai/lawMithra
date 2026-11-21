@@ -2,6 +2,7 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Activity, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { API_BASE_URL } from '@/lib/api';
 
 interface HealthResponse {
   status: string;
@@ -12,7 +13,7 @@ export function ApiStatusBadge() {
   const { data, isError, isLoading, refetch, isFetching } = useQuery<HealthResponse>({
     queryKey: ['apiHealth'],
     queryFn: async () => {
-      const response = await fetch('/api/health/');
+      const response = await fetch(`${API_BASE_URL}/api/health/`);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }

@@ -214,6 +214,9 @@ CSRF_TRUSTED_ORIGINS = [
     'http://127.0.0.1:5173',
 ]
 
+# Prevent 301 redirects on trailing slashes so POST/PUT requests are never converted to GET (HTTP 405)
+APPEND_SLASH = False
+
 # DRF Spectacular (OpenAPI 3 / Swagger) Documentation Settings
 SPECTACULAR_SETTINGS = {
     'TITLE': 'Law Mithra API',

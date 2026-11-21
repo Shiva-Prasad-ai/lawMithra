@@ -64,6 +64,15 @@ export interface HealthResponse {
   service: string;
 }
 
+// Target API base URL: defaults to Render in production builds and relative/Vite proxy in local dev
+export const API_BASE_URL = (
+  import.meta.env.VITE_API_BASE_URL !== undefined
+    ? import.meta.env.VITE_API_BASE_URL
+    : import.meta.env.DEV
+    ? ''
+    : 'https://lawmithra.onrender.com'
+).replace(/\/$/, '');
+
 // In-memory access token storage (Security Rule 3)
 let inMemoryAccessToken: string | null = null;
 let onAuthFailureCallback: (() => void) | null = null;
@@ -82,6 +91,7 @@ export function setOnAuthFailure(callback: () => void) {
 
 // Helper to make authenticated requests with auto-refresh on 401
 export async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
+  const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
   const headers = new Headers(options.headers || {});
 
   if (inMemoryAccessToken && !headers.has('Authorization')) {
@@ -95,7 +105,7 @@ export async function apiFetch(url: string, options: RequestInit = {}): Promise<
     credentials: 'include',
   };
 
-  let res = await fetch(url, fetchOptions);
+  let res = await fetch(fullUrl, fetchOptions);
 
   // If 401 received and not currently calling auth endpoints, try silent refresh once
   if (res.status === 401 && !url.includes('/api/auth/')) {
@@ -104,7 +114,7 @@ export async function apiFetch(url: string, options: RequestInit = {}): Promise<
       if (refreshed && inMemoryAccessToken) {
         // Retry original request with new access token
         headers.set('Authorization', `Bearer ${inMemoryAccessToken}`);
-        res = await fetch(url, { ...fetchOptions, headers });
+        res = await fetch(fullUrl, { ...fetchOptions, headers });
       } else {
         if (onAuthFailureCallback) onAuthFailureCallback();
       }
@@ -126,7 +136,7 @@ export async function registerUser(data: {
   preferred_language?: string;
   text_size?: string;
 }): Promise<AuthResponse> {
-  const res = await fetch('/api/auth/register/', {
+  const res = await fetch(`${API_BASE_URL}/api/auth/register/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -160,7 +170,7 @@ export async function loginUser(data: {
   email: string;
   password: string;
 }): Promise<AuthResponse> {
-  const res = await fetch('/api/auth/login/', {
+  const res = await fetch(`${API_BASE_URL}/api/auth/login/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -177,7 +187,7 @@ export async function loginUser(data: {
       errorData.email?.[0] ||
       errorData.password?.[0] ||
       errorData.detail ||
-      'Invalid email or password.';
+      (res.status === 401 ? 'Invalid email or password.' : `Login failed (HTTP ${res.status}). Please try again.`);
     throw new Error(message);
   }
 
@@ -199,7 +209,7 @@ export async function refreshAuthToken(): Promise<string | null> {
     } catch {}
 
     const payload = storedRefresh ? { refresh: storedRefresh } : {};
-    const res = await fetch('/api/auth/refresh/', {
+    const res = await fetch(`${API_BASE_URL}/api/auth/refresh/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -239,7 +249,7 @@ export async function logoutUser(): Promise<void> {
     } catch {}
 
     const payload = storedRefresh ? { refresh: storedRefresh } : {};
-    await fetch('/api/auth/logout/', {
+    await fetch(`${API_BASE_URL}/api/auth/logout/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -326,7 +336,7 @@ export async function deleteUserAccount(password: string): Promise<void> {
 /* ================= Document API ================= */
 
 export async function checkApiHealth(): Promise<HealthResponse> {
-  const res = await fetch('/api/health/');
+  const res = await fetch(`${API_BASE_URL}/api/health/`);
   if (!res.ok) {
     throw new Error(`Health check returned status ${res.status}`);
   }

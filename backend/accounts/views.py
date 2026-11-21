@@ -27,13 +27,14 @@ COOKIE_MAX_AGE = 7 * 24 * 60 * 60  # 7 days
 
 
 def set_refresh_cookie(response: Response, refresh_token: str):
-    """Sets the refresh token in a secure, httpOnly, SameSite=Lax cookie."""
+    """Sets the refresh token in a secure, httpOnly cookie (SameSite=None in production for cross-site)."""
+    samesite = 'None' if not settings.DEBUG else 'Lax'
     response.set_cookie(
         key=COOKIE_NAME,
         value=refresh_token,
         max_age=COOKIE_MAX_AGE,
         httponly=True,
-        samesite='Lax',
+        samesite=samesite,
         secure=not settings.DEBUG,
         path=COOKIE_PATH,
     )
