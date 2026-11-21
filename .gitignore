@@ -83,3 +83,9 @@ ehthumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+# Backup & local temporary files
+*.bak
+*.backup
+*.pre_*
+db.sqlite3*
