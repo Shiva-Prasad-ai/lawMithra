@@ -19,8 +19,17 @@ from drf_spectacular.views import (
 from django.conf import settings
 from django.conf.urls.static import static
 from config.views import HealthCheckView
+from django.http import JsonResponse
 
 urlpatterns = [
+    # Root status check
+    re_path(r'^/?$', lambda request: JsonResponse({
+        'status': 'online',
+        'service': 'Law Mithra API',
+        'health': '/api/health/',
+        'docs': '/api/docs/'
+    })),
+
     # Administration
     re_path(r'^admin/?', admin.site.urls),
 
