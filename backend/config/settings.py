@@ -198,12 +198,21 @@ SIMPLE_JWT = {
 }
 
 # CORS Configuration
-# Restricts access to configured origins (default: frontend development server)
-CORS_ALLOWED_ORIGINS = env.list(
-    'CORS_ALLOWED_ORIGINS',
-    default=['http://localhost:5173', 'http://127.0.0.1:5173']
-)
+# Allows requests from Vercel deployments, Render, and local frontend
+CORS_ALLOW_ALL_ORIGINS = env.bool('CORS_ALLOW_ALL_ORIGINS', default=True)
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https://.*\.vercel\.app$",
+    r"^https://.*\.onrender\.com$",
+    r"^http://localhost:\d+$",
+    r"^http://127\.0\.0\.1:\d+$",
+]
+CSRF_TRUSTED_ORIGINS = [
+    'https://*.vercel.app',
+    'https://*.onrender.com',
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+]
 
 # DRF Spectacular (OpenAPI 3 / Swagger) Documentation Settings
 SPECTACULAR_SETTINGS = {
