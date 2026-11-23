@@ -201,6 +201,11 @@ SIMPLE_JWT = {
 # Allows requests from Vercel deployments, Render, and local frontend
 CORS_ALLOW_ALL_ORIGINS = env.bool('CORS_ALLOW_ALL_ORIGINS', default=True)
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOWED_ORIGINS = [
+    'https://law-mithra-io-sage.vercel.app',
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+]
 CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^https://.*\.vercel\.app$",
     r"^https://.*\.onrender\.com$",
@@ -208,6 +213,7 @@ CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^http://127\.0\.0\.1:\d+$",
 ]
 CSRF_TRUSTED_ORIGINS = [
+    'https://law-mithra-io-sage.vercel.app',
     'https://*.vercel.app',
     'https://*.onrender.com',
     'http://localhost:5173',
